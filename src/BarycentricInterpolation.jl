@@ -3,21 +3,24 @@ module BarycentricInterpolation
 export InterpolationGrid, InterpolationPolynomial, evaluate
 export add_point!, change_point!
 export chebyshev, discrete_chebyshev
+export roots
 
 mutable struct InterpolationGrid{T<:Real}
     x::Array{T,1}
     w::Array{T,1}
+    s::T
     function InterpolationGrid{T}(x::Array{T,1}) where T<:Real
         d = length(x)-1
         w = zeros(T, d+1)
         w[1] = one(T)
+        s = (maximum(x)-minimum(x))/2
         for k=2:d+1
             for i=1:k-1
-                w[i] /= (x[i]-x[k])
+                w[i] *= s/(x[i]-x[k])
             end
-            w[k] = one(T)/prod([x[k]-x[j] for j=1:k-1])
+            w[k] = prod([s/(x[k]-x[j]) for j=1:k-1])
         end
-        new(x, w)
+        new(x, w, s)
     end
 end
 InterpolationGrid(x::Array{T,1}) where T<:Real = InterpolationGrid{T}(x)
@@ -55,9 +58,9 @@ function add_point!{T<:Real}(g::InterpolationGrid{T}, x::T)
     push!(g.w, zero(T))
     k = length(x) 
     for i=1:k-1
-        w[i] /= (x[i]-x[k])
+        w[i] *= g.s/(g.x[i]-g.x[k])
     end
-    w[k] = one(T)/prod([x[k]-x[j] for j=1:k-1])
+    w[k] = prod([g.s/(g.x[k]-g.x[j]) for j=1:k-1])
 end
 
 function add_point!{T<:Real}(p::InterpolationPolynomial{T}, x::T, f::T)
@@ -73,7 +76,7 @@ function change_point!{T<:Real}(g::InterpolationGrid{T}, index::Integer, x::T)
                 g.w[i] *= (g.x[i]-g.x[index])/(g.x[i]-x)
             end     
         end
-        g.w[index] = one(T)/prod([x-g.x[j] for j=1:k if j!=index])
+        g.w[index] = prod([g.s/(x-g.x[j]) for j=1:k if j!=index])
         g.x[index] = x
     end
 end
@@ -121,9 +124,9 @@ function discrete_chebyshev(n::Int, d::Int)
     while true
         x = k+0.0
         y = evaluate(x,p)
-        if abs(y) > 1.0+100*eps(Float64)
-            l1 = findfirst(p.g.x, x-1)
-            l2 = findfirst(p.g.x, x+1)
+        if abs(y) > 1.0+1000*eps(Float64)
+            l1 = findfirst(p.g.x, x+1)
+            l2 = findfirst(p.g.x, x-1)
             if l1>0 && sign(p.f[l1])==sign(y)
                 change_point!(p, l1, x)
                 change_point!(p, ll-l1+1, -x)
