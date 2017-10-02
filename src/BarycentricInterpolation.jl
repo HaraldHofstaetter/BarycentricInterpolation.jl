@@ -48,6 +48,8 @@ function evaluate{T<:Real}(x::T, p::InterpolationPolynomial{T})
     return sum(p.g.w.*p.f./(x - p.g.x))/sum(p.g.w./(x - p.g.x))
 end
 
+(p::InterpolationPolynomial){T}(x::T) = evaluate(x,p)
+
 function add_point!{T<:Real}(g::InterpolationGrid{T}, x::T)
     push!(g.x, x)
     push!(g.w, zero(T))
