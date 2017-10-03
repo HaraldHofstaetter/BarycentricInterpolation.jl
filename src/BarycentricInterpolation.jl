@@ -123,10 +123,12 @@ function discrete_chebyshev(n::Int, d::Int)
     k = -n
     while true
         x = k+0.0
-        y = evaluate(x,p)
+        y = p(x)
         if abs(y) > 1.0+1000*eps(Float64)
-            l1 = findfirst(p.g.x, x+1)
-            l2 = findfirst(p.g.x, x-1)
+            #l1 = findfirst(p.g.x, x+1)
+            #l2 = findfirst(p.g.x, x-1)
+            l1 = findlast(t->t<x, p.g.x)
+            l2 = findfirst(t->t>x, p.g.x)
             if l1>0 && sign(p.f[l1])==sign(y)
                 change_point!(p, l1, x)
                 change_point!(p, ll-l1+1, -x)
@@ -151,17 +153,18 @@ end
 function discrete_chebyshev(X::Array{Float64,1}, d::Int)
     X = sort(X)
     n = length(X)
-    nn = vcat(1:d-1,n)
+    m = ceil(Int, (d+1)/2)
+    nn = vcat(1:m,n-(d+1-m)+1:n)
     ff = -(-1.0).^(length(nn):-1:1)
     p = InterpolationPolynomial(X[nn],ff)
     while true
-        y = [p(x) for x in  X]
-        k = k = findfirst(x->abs(x)>1+1000*eps(Float64), y)
+        y = p.(X)
+        k = findfirst(x->abs(x)>1+1000*eps(Float64), y)
         if k==0
             break
         end
-        l1 = findfirst(p.g.x, X[k-1])
-        l2 = findfirst(p.g.x, X[k+1])
+        l1 = findlast(x->x<X[k], p.g.x)
+        l2 = findfirst(x->x>X[k], p.g.x)
         if l1>0 && sign(p.f[l1])==sign(y[k])
             change_point!(p, l1, X[k])
         elseif l2>0 && sign(p.f[l2])==sign(y[k])
